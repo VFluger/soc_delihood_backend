@@ -40,6 +40,7 @@ exports.login = async (req, res) => {
 };
 
 exports.newTokens = async (req, res) => {
+  console.log(req.body);
   await check("refreshToken").isString().isLength({ min: 10 }).run(req);
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
