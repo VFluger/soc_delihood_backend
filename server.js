@@ -1,16 +1,20 @@
 const Express = require("express");
 const app = Express();
 
+const PAYLOAD_LIMIT = "10mb";
+
 require("dotenv").config(); // .env setup
 const cookieParser = require("cookie-parser"); // parsing cookies
 
 // Basic middleware
-app.use(Express.urlencoded()); // HTML forms parse
-app.use(Express.json()); // JSON parse
+app.use(Express.urlencoded({ limit: PAYLOAD_LIMIT, extended: true })); // HTML forms parse
+app.use(Express.json({ limit: PAYLOAD_LIMIT })); // JSON parse
 app.use(cookieParser());
 
 app.use((req, res, next) => {
   console.log(`${req.method} on ${req.url}`);
+  console.log("Body: ", req.body);
+  console.log("Auth: ", req.headers.authorization);
   next();
 });
 

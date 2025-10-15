@@ -21,19 +21,18 @@ export const uploadPfp = async (req, res) => {
   }
   try {
     const fileUrl = await fileUpload(file, req.user.id);
+    if (!fileUrl) {
+      return res.status(500).json({ error: "File upload failed" });
+    }
+    await sql`UPDATE users SET image_url=${fileUrl} WHERE id=${req.user.id}`;
+    return res.json({ message: "Profile picture updated" });
   } catch (err) {
     return res.status(500).json({ error: "File upload failed" });
   }
-  if (!fileUrl) {
-    return res.status(500).json({ error: "File upload failed" });
-  }
-
-  await sql`UPDATE users SET image_url=${fileUrl} WHERE id=${req.user.id}`;
-  return res.json({ message: "Profile picture updated" });
 };
 
 export const getPfp = async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.query.userId;
   const user = await sql`SELECT image_url FROM users WHERE id=${userId}`;
   if (user.length < 1) {
     return res.status(404).json({ error: "User not found" });
@@ -48,5 +47,6 @@ export const getPfp = async (req, res) => {
       .status(500)
       .json({ error: "Could not retrieve profile picture" });
   }
+  res.setHeader("content-type", "image/avif");
   return res.send(fileBuffer);
 };

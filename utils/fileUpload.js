@@ -13,6 +13,7 @@ const r2 = new S3Client({
     accessKeyId: process.env.R2_ACCESS_KEY,
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
   },
+  maxAttempts: 1,
 });
 
 export const fileUpload = async (file, userId) => {
@@ -22,10 +23,10 @@ export const fileUpload = async (file, userId) => {
 
   const filename = `UID-${userId}-${crypto.randomUUID()}`;
   try {
-    // Process image: crop, resize, and compress to WebP
+    // Process image: crop, resize, and compress to AVIF
     const processedBuffer = await sharp(file.buffer)
       .resize(512, 512, { fit: "cover", position: "center" }) // crop to 1:1
-      .webp({ quality: 60 }) // compress to WebP
+      .avif() // compress to AVIF
       .toBuffer();
 
     await r2.send(
@@ -33,7 +34,7 @@ export const fileUpload = async (file, userId) => {
         Bucket: process.env.R2_PFP_BUCKET,
         Key: filename,
         Body: processedBuffer,
-        ContentType: "image/webp",
+        ContentType: "image/avif",
       })
     );
     return filename;
