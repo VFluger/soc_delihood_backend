@@ -1,8 +1,8 @@
-import { check } from "express-validator";
-import { fileUpload, getPfpFile } from "../utils/fileUpload.js";
-import sql from "../db.js";
+const { check } = require("express-validator");
+const { fileUpload, getPfpFile } = require("../utils/fileUpload.js");
+const sql = require("../db.js");
 
-export const uploadPfp = async (req, res) => {
+module.exports.uploadPfp = async (req, res) => {
   const file = req.file;
 
   if (!file) {
@@ -31,7 +31,7 @@ export const uploadPfp = async (req, res) => {
   }
 };
 
-export const getPfp = async (req, res) => {
+module.exports.getPfp = async (req, res) => {
   const userId = req.query.userId;
   const user = await sql`SELECT image_url FROM users WHERE id=${userId}`;
   if (user.length < 1) {

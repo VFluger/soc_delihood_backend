@@ -1,11 +1,12 @@
-import {
+const {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import crypto from "crypto";
-import sharp from "sharp";
+} = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const crypto = require("crypto");
+const sharp = require("sharp");
+
 const r2 = new S3Client({
   region: "auto",
   endpoint: process.env.R2_S3_ENDPOINT,
@@ -16,12 +17,12 @@ const r2 = new S3Client({
   maxAttempts: 1,
 });
 
-export const fileUpload = async (file, userId) => {
+module.exports.fileUpload = async (file, userId) => {
   if (!file || !file.buffer || !userId) {
     throw new Error("File or userId not provided");
   }
 
-  const filename = `UID-${userId}-${crypto.randomUUID()}`;
+  const filename = `pfp/UID-${userId}-${crypto.randomUUID()}`;
   try {
     // Process image: crop, resize, and compress to AVIF
     const processedBuffer = await sharp(file.buffer)
@@ -31,7 +32,7 @@ export const fileUpload = async (file, userId) => {
 
     await r2.send(
       new PutObjectCommand({
-        Bucket: process.env.R2_PFP_BUCKET,
+        Bucket: process.env.R2_MAIN_BUCKET,
         Key: filename,
         Body: processedBuffer,
         ContentType: "image/avif",
@@ -43,13 +44,14 @@ export const fileUpload = async (file, userId) => {
   }
 };
 
-export const getPfpFile = async (filename) => {
+module.exports.getPfpFile = async (filename) => {
   if (!filename) {
     throw new Error("Filename not provided");
   }
+  console.log(filename);
   try {
     const command = new GetObjectCommand({
-      Bucket: process.env.R2_PFP_BUCKET,
+      Bucket: process.env.R2_MAIN_BUCKET,
       Key: filename,
     });
     const file = await r2.send(command);
