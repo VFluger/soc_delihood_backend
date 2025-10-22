@@ -2,6 +2,8 @@ const { check, validationResult } = require("express-validator");
 
 const sql = require("../db");
 
+const fcm = require("../FCM");
+
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
 const PRICE_OF_DELIVERY = 30; // 30 Kc
@@ -215,7 +217,18 @@ module.exports.updateOrder = async (req, res) => {
       // Update in db
       await sql`UPDATE orders SET status='paid' WHERE id=${orderId}`;
       //Send notification to cook app via APN
-
+      const cookMessage = {
+        token: cookresult[0].devicetoken,
+        notification: {
+          title: "New food order for you!",
+          body: "You have a new order for cooking. Open the app to accept and navigate!",
+        },
+        data: {
+          type: "new-cook-order",
+          orderId,
+        },
+      };
+      fcm.messaging().send(cookMessage);
       res.send({ orderId, status: "paid" });
       break;
     case "waiting for pickup":
@@ -246,7 +259,18 @@ module.exports.updateOrder = async (req, res) => {
       await sql`UPDATE drivers SET current_order_id=${orderId}, last_order_time=NOW() WHERE id=${driver.id}`;
 
       // Ping driver app
-      // APN
+      const driverMessage = {
+        token: driver.devicetoken,
+        notification: {
+          title: "New order for you!",
+          body: "You have a new order. Open the app to accept and navigate!",
+        },
+        data: {
+          type: "new-driver-order",
+          orderId,
+        },
+      };
+      fcm.messaging().send(driverMessage);
       res.send({ orderId, status: resultOrder[0].status });
     case "delivering":
       //Send driver location

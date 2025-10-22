@@ -4,7 +4,6 @@ const sql = require("../db.js");
 
 module.exports.uploadPfp = async (req, res) => {
   const file = req.file;
-
   if (!file) {
     return res.status(400).json({ error: "No file uploaded" });
   }
@@ -20,7 +19,7 @@ module.exports.uploadPfp = async (req, res) => {
     return res.status(400).json({ error: "File too large. Max size is 5MB." });
   }
   try {
-    const fileUrl = await fileUpload(file, req.user.id);
+    const fileUrl = await uploadPfpFile(file, req.user.id);
     if (!fileUrl) {
       return res.status(500).json({ error: "File upload failed" });
     }
@@ -41,12 +40,11 @@ module.exports.getPfp = async (req, res) => {
   if (!imageUrl) {
     return res.status(404).json({ error: "No profile picture set" });
   }
-  const fileBuffer = await getPfpFile(imageUrl);
-  if (!fileBuffer) {
+  const signedUrl = await getPfpFile(imageUrl);
+  if (!signedUrl) {
     return res
       .status(500)
       .json({ error: "Could not retrieve profile picture" });
   }
-  res.setHeader("content-type", "image/avif");
-  return res.send(fileBuffer);
+  return res.send(signedUrl);
 };

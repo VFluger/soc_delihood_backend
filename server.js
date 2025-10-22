@@ -1,6 +1,8 @@
 const Express = require("express");
 const app = Express();
 
+const rateLimiter = require("./rateLimits");
+
 const PAYLOAD_LIMIT = "10mb";
 
 require("dotenv").config(); // .env setup
@@ -25,14 +27,10 @@ const { loginAuth } = require("./middleware/jwtAuth");
 const authRoutes = require("./routes/auth");
 const apiRoutes = require("./routes/api");
 const confirmationsRoutes = require("./routes/confirmations");
-app.use("/auth", authRoutes);
-app.use("/api", loginAuth, apiRoutes);
-app.use("/confirmations", confirmationsRoutes);
 
-//Testing HTML
-app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/dev.html");
-});
+app.use("/auth", rateLimiter.authLimit, authRoutes);
+app.use("/api", loginAuth, rateLimiter.apiLimit, apiRoutes);
+app.use("/confirmations", rateLimiter.authLimit, confirmationsRoutes);
 
 // Listen setup
 const server = app.listen(process.env.PORT || "8080", () => {
