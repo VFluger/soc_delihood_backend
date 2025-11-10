@@ -33,6 +33,9 @@ app.use("/api", loginAuth, rateLimiter.apiLimit, apiRoutes);
 app.use("/confirmations", rateLimiter.authLimit, confirmationsRoutes);
 
 // Listen setup
-const server = app.listen(process.env.PORT || "8080", () => {
-  console.log(`Server listening on ${server.address().port}`);
+module.exports.server = app.listen(process.env.PORT || "8080", () => {
+  console.log(`Server listening on ${process.env.PORT || "8080"}`);
 });
+
+//Socket start
+require("./routes/socket");

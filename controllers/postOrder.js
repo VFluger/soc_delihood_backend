@@ -46,23 +46,23 @@ module.exports.newOrder = async (req, res) => {
   }
 
   // Check if there is a driver within 25km who is online
-  const driverResult = await sql`
-    SELECT id FROM drivers
-    WHERE is_online = true
-    AND ST_DWithin(
-      location::geography,
-      ST_SetSRID(ST_MakePoint(${deliveryLocationLng}, ${deliveryLocationLat}), 4326)::geography,
-      25000
-    )
-    LIMIT 1
-  `;
+  // const driverResult = await sql`
+  //   SELECT id FROM drivers
+  //   WHERE is_online = true
+  //   AND ST_DWithin(
+  //     location::geography,
+  //     ST_SetSRID(ST_MakePoint(${deliveryLocationLng}, ${deliveryLocationLat}), 4326)::geography,
+  //     25000
+  //   )
+  //   LIMIT 1
+  // `;
 
-  if (driverResult.length < 1) {
-    console.log("No drivers available in location");
-    return res
-      .status(400)
-      .send({ error: "No driver available in your location" });
-  }
+  // if (driverResult.length < 1) {
+  //   console.log("No drivers available in location");
+  //   return res
+  //     .status(400)
+  //     .send({ error: "No driver available in your location" });
+  // }
 
   // Calculate prices
   // Map of foods by id
@@ -90,9 +90,10 @@ module.exports.newOrder = async (req, res) => {
             (total_price, 
             tip, 
             delivery_location, 
-            user_id)
+            user_id, 
+            cook_id)
             VALUES
-            (${totalPrice}, ${tip}, ST_SetSRID(ST_MakePoint(${deliveryLocationLng}, ${deliveryLocationLat}), 4326)::geography, ${req.user.id})
+            (${totalPrice}, ${tip}, ST_SetSRID(ST_MakePoint(${deliveryLocationLng}, ${deliveryLocationLat}), 4326)::geography, ${req.user.id}, ${cookIds[0]})
             RETURNING id`;
 
   const orderId = resultOfNewOrder[0].id;
@@ -232,45 +233,6 @@ module.exports.updateOrder = async (req, res) => {
       res.send({ orderId, status: "paid" });
       break;
     case "waiting for pickup":
-      const alrHasDrivrResult =
-        await sql`SELECT id FROM drivers WHERE current_order_id=${orderId}`;
-      if (alrHasDrivrResult.length > 0) {
-        //Already has a driver assigned
-        return res.send({ orderId, status: resultOrder[0].status });
-      }
-
-      //Pick driver
-      const driverResult = await sql`SELECT *,
-       ST_Distance(location, ${cookResult.location}) AS distance,
-       EXTRACT(EPOCH FROM (NOW() - last_order_time)) AS wait_seconds,
-       ST_Distance(location, ${cookResult.location}) / 1000 
-         - EXTRACT(EPOCH FROM (NOW() - last_order_time)) / 60 AS score
-        FROM drivers
-        WHERE is_online = true AND current_order_id IS NULL
-        ORDER BY score ASC
-        LIMIT 1;`;
-      if (driverResult.length < 1) {
-        //PROBLEM, no driver available
-        return res
-          .status(503) //service unavailable
-          .send({ error: "No driver available in your location" });
-      }
-      const driver = driverResult[0];
-      await sql`UPDATE drivers SET current_order_id=${orderId}, last_order_time=NOW() WHERE id=${driver.id}`;
-
-      // Ping driver app
-      const driverMessage = {
-        token: driver.devicetoken,
-        notification: {
-          title: "New order for you!",
-          body: "You have a new order. Open the app to accept and navigate!",
-        },
-        data: {
-          type: "new-driver-order",
-          orderId,
-        },
-      };
-      fcm.messaging().send(driverMessage);
       res.send({ orderId, status: resultOrder[0].status });
     case "delivering":
       //Send driver location
