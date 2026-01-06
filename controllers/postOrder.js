@@ -46,23 +46,23 @@ module.exports.newOrder = async (req, res) => {
   }
 
   // Check if there is a driver within 25km who is online
-  // const driverResult = await sql`
-  //   SELECT id FROM drivers
-  //   WHERE is_online = true
-  //   AND ST_DWithin(
-  //     location::geography,
-  //     ST_SetSRID(ST_MakePoint(${deliveryLocationLng}, ${deliveryLocationLat}), 4326)::geography,
-  //     25000
-  //   )
-  //   LIMIT 1
-  // `;
+  const driverResult = await sql`
+    SELECT id FROM drivers
+    WHERE is_online = true
+    AND ST_DWithin(
+      location::geography,
+      ST_SetSRID(ST_MakePoint(${deliveryLocationLng}, ${deliveryLocationLat}), 4326)::geography,
+      25000
+    )
+    LIMIT 1
+  `;
 
-  // if (driverResult.length < 1) {
-  //   console.log("No drivers available in location");
-  //   return res
-  //     .status(400)
-  //     .send({ error: "No driver available in your location" });
-  // }
+  if (driverResult.length < 1) {
+    console.log("No drivers available in location");
+    return res
+      .status(400)
+      .send({ error: "No driver available in your location" });
+  }
 
   // Calculate prices
   // Map of foods by id
@@ -180,82 +180,6 @@ module.exports.getPayment = async (req, res) => {
     clientSecret: existingIntents.data[0].client_secret,
     orderId: result[0].id,
   });
-};
-
-module.exports.updateOrder = async (req, res) => {
-  await check("id").isInt().trim().run(req);
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).send({ error: errors.array() });
-  }
-
-  //Get order from db
-  const orderId = req.query.id;
-  const resultOrder =
-    await sql`SELECT * FROM orders WHERE id=${orderId} AND user_id=${req.user.id}`;
-  if (resultOrder.length < 1) {
-    return res.status(404).send({ error: "Order not found" });
-  }
-
-  // Check for order on stripe
-  const intent = await stripe.paymentIntents.search({
-    query: `metadata['orderId']:'${orderId}'`,
-  });
-
-  if (intent.status !== "succeeded") {
-    //not paid
-    return res.send({ status: "pending", paymentStatus: intent.status });
-  }
-  if (resultOrder[0].user_id !== req.user.id) {
-    return res.status(403).send({ error: "Not your order" });
-  }
-  const cookResult =
-    await sql`SELECT location FROM cooks WHERE id=(SELECT cook_id FROM foods WHERE id=(SELECT food_id FROM order_items WHERE order_id=${orderId} LIMIT 1))`;
-
-  switch (resultOrder[0].status) {
-    case "pending":
-      //Order paid but not started
-      // Update in db
-      await sql`UPDATE orders SET status='paid' WHERE id=${orderId}`;
-      //Send notification to cook app via APN
-      const cookMessage = {
-        token: cookresult[0].devicetoken,
-        notification: {
-          title: "New food order for you!",
-          body: "You have a new order for cooking. Open the app to accept and navigate!",
-        },
-        data: {
-          type: "new-cook-order",
-          orderId,
-        },
-      };
-      fcm.messaging().send(cookMessage);
-      res.send({ orderId, status: "paid" });
-      break;
-    case "waiting for pickup":
-      res.send({ orderId, status: resultOrder[0].status });
-    case "delivering":
-      //Send driver location
-      const driverLocResult = sql`
-      SELECT 
-        ST_X(location::geometry) AS lng, 
-        ST_Y(location::geometry) AS lat 
-      FROM drivers 
-      WHERE current_order_id=${orderId}`;
-
-      if (driverLocResult.length < 1) {
-        return res.status(404).send({ error: "Driver not found" });
-      }
-      const driverLoc = driverLocResult[0];
-      const lng = driverLoc.lng;
-      const lat = driverLoc.lat;
-      res.send({ orderId, status: resultOrder[0].status, lng, lat });
-      break;
-    default:
-      //just send the status
-      res.send({ orderId, status: resultOrder[0].status });
-      break;
-  }
 };
 
 module.exports.cancelOrder = async (req, res) => {
