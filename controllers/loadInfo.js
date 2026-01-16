@@ -29,20 +29,6 @@ module.exports.getMyOrders = async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await sql`SELECT * FROM orders WHERE user_id=${userId}`;
-    // Check payment status for 'pending' orders
-    for (const order of result) {
-      if (order.status !== "pending") {
-        continue;
-      }
-      const searchReslt = await stripe.paymentIntents.search({
-        query: `metadata['orderId']:'${order.id}'`,
-      });
-      const intent = searchReslt.data[0];
-      if (intent.status === "succeeded") {
-        order.status = "paid";
-        await sql`UPDATE orders SET status='paid' WHERE id=${order.id}`;
-      }
-    }
     res.send({ success: true, data: result });
   } catch (err) {
     console.error(err);

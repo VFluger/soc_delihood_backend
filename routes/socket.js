@@ -9,6 +9,7 @@ module.exports.EVENTS = {
   DRIVER_PICKUP: "foodPickup",
   DRIVER_PICKUP_ERROR: "foodPickupError",
 
+  COOK_NEW_ORDER: "newOrder",
   COOK_ACCEPTED: "orderAccepted",
   COOK_ACCEPTED_ERROR: "orderAcceptedError",
   COOK_ORDER_READY: "orderReady",
@@ -36,6 +37,17 @@ const driverRoutes = require("../controllers/socket/driver");
 const cookRoutes = require("../controllers/socket/cook");
 const userRoutes = require("../controllers/socket/user");
 
+// When received hook from stripe, notify cook of new order
+module.exports.cookOrder = (cook_id) => {
+  const cookSocket = cooksSockets[cook_id];
+  if (cookSocket) {
+    cookSocket.emit(EVENTS.COOK_NEW_ORDER, { orderId });
+  } else {
+    //Cook offline, send fcm
+    //Example: fcm.messaging().send(message)
+  }
+};
+
 io.on("connection", (socket) => {
   console.log("New socket connected");
   switch (socket.accountType) {
@@ -46,9 +58,6 @@ io.on("connection", (socket) => {
       //Routes
       socket.on(this.EVENTS.USER_ORDER_DELIVERED, (data) =>
         userRoutes.orderDelivered(socket, cooksSockets, driverSockets, data)
-      );
-      socket.on(this.EVENTS.USER_PAYMENT_COMPLETED, (data) =>
-        userRoutes.orderPaid(socket, cooksSockets, data)
       );
       break;
     case "cook":
@@ -88,18 +97,13 @@ io.on("connection", (socket) => {
 io.on("disconnect", (socket) => {
   switch (socket.accountType) {
     case "user":
-      //Push socket to store
       delete usersSockets[socket.userId];
       break;
     case "cook":
-      //Push socket to store
       delete cooksSockets[socket.userId];
       break;
     case "driver":
-      //Push socket to store
       delete driverSockets[socket.userId];
       break;
-    default:
-      socket.disconnect();
   }
 });

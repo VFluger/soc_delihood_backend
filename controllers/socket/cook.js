@@ -1,6 +1,7 @@
 const sql = require("../../db");
 const { EVENTS } = require("../../routes/socket");
 
+//HELPER FUNCS
 const pickDriver = async (orderId, cookLocation) => {
   const alrHasDrivrResult =
     await sql`SELECT id FROM drivers WHERE current_order_id=${orderId}`;

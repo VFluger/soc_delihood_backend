@@ -3,54 +3,6 @@ const { EVENTS } = require("../../routes/socket");
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
-module.exports.orderPaid = async (socket, cooksSockets, data) => {
-  const orderId = data.orderId;
-  const userId = socket.userId;
-
-  //Check order
-  const [order] = await sql`
-  SELECT cook_id
-  FROM orders
-  WHERE id = ${orderId} AND user_id = ${userId} AND status = 'pending'
-  `;
-  if (!order) {
-    return socket.emit(EVENTS.USER_PAYMENT_COMPLETED_ERROR, {
-      error: "Order not found",
-    });
-  }
-
-  // Check for order on stripe
-  const {
-    data: [intent],
-  } = await stripe.paymentIntents.search({
-    query: `metadata['orderId']:'${orderId}'`,
-  });
-  console.log(intent);
-
-  if (intent.status !== "succeeded") {
-    //not paid
-    return socket.emit(EVENTS.USER_PAYMENT_COMPLETED_ERROR, {
-      error: "Order not paid",
-    });
-  }
-  //Update db
-  await sql`
-  UPDATE orders
-  SET status = 'paid'
-  WHERE id = ${orderId} AND user_id = ${userId}
-  `;
-  //Notify cook of order
-  console.log("sockets: ", cooksSockets);
-  const cookSocket = cooksSockets[order.cook_id];
-  console.log("Selected socket: ", cookSocket);
-  if (cookSocket) {
-    cookSocket.emit(EVENTS.USER_PAYMENT_COMPLETED, { orderId });
-  } else {
-    //Cook offline, send fcm
-    //Example: fcm.messaging().send(message)
-  }
-};
-
 module.exports.orderDelivered = async (
   socket,
   cooksSockets,

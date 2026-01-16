@@ -8,6 +8,14 @@ const PAYLOAD_LIMIT = "10mb";
 require("dotenv").config(); // .env setup
 const cookieParser = require("cookie-parser"); // parsing cookies
 
+//Stripe webhook
+const { stripePaymentCompleted } = require("./controllers/webhook");
+app.post(
+  "/stripe/payment-success",
+  Express.raw({ type: "application/json" }),
+  stripePaymentCompleted
+);
+
 // Basic middleware
 app.use(Express.urlencoded({ limit: PAYLOAD_LIMIT, extended: true })); // HTML forms parse
 app.use(Express.json({ limit: PAYLOAD_LIMIT })); // JSON parse
