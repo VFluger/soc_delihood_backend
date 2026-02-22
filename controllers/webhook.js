@@ -29,7 +29,7 @@ module.exports.stripePaymentCompleted = (req, res) => {
     }
 
     //Contact cook with socket or FCM
-    cookOrder(cook_id);
+    cookOrder(order.cook_id);
     return res.send({ success: true });
   }
   return res.status(400).send({ error: "Unknown event type" });

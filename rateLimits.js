@@ -4,7 +4,7 @@ module.exports = {
   apiLimit: rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 200,
-    keyGenerator: (req, res) => req.user.id,
+    keyGenerator: (req) => req.user.id,
   }),
   authLimit: rateLimit({
     windowMs: 15 * 60 * 1000,
